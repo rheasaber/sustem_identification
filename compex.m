@@ -1,3 +1,4 @@
+
 %% exercice 1.1 
 
 Ts=0.2; %sec
@@ -94,24 +95,107 @@ output=simout.simout.signals.values;
 %finite impulse response
 
 
-
-
-
-
 U_p = U(:,1:200); %k=200
 f_impulse_response = (U_p'*U_p) \ U_p' * output(1:end-1);
 
 %finite impulse response with bias
+tfc = tf([0, 3], [0.5, 0.4, 1]);% transfer fonction continuous
+tfd=c2d(tfc, Ts, 'zoh');
+[true_impulse, impulse_t] = impulse(tfd, time_vector(200)); %to compare with the values given bu lambda
 
-[true_impulse, impulse_t] = impulse(tfd, t(200)); %to compare with the values given bu lambda
 
+%finite impulse response with bias
 
-erreur_theta_truei=zeros(1,200);
 %eye= eye(200); %matrice identite
 
 
+lambda=linspace(1,200,400);
+erreur_theta_truei=zeros(length(lambda),1);
 
-for lambda=1:200
-    impulse_bias(1,200)= (U_p'*U_p+lambda*eye(200)) \ (U_p' * output(1:end));
-    erreur_theta_truei(lambda,1)=sqrt(sum((impulse_bias(lambda,1)-true_impulse*Ts).^2));
+for i=1:length(lambda)-1
+    impulse_bias= ((U_p'*U_p)+lambda(i)*eye(200)) \ (U_p' * output(1:end-1));
+    erreur_theta_truei(i)=sqrt(sum((impulse_bias-true_impulse*Ts).^2));
 end
+
+%doable in exercices because we have the true impulse response but in
+%theory we don't have it so we need to find lambda by trial and error
+
+[~, I] = min(erreur_theta_truei);
+lambda= lambda(I);
+impulse_bias= (U_p'*U_p+lambda*eye(200)) \ (U_p' * output(1:end-1));
+
+
+figure(4)
+hold on
+plot(time_vector(1:length(f_impulse_response)),f_impulse_response);
+plot(time_vector(1:length(impulse_bias)),impulse_bias);
+plot(impulse_t, true_impulse*Ts); %true impulse
+legend('Finite impulse response by deconvolution (K=200)','Finite impulse response by regularization', 'True impulse response');
+xlabel('Time(s)');
+ylabel('Module of the different inpulse responses ');
+hold off
+%
+
+
+%% Exercice 1.4
+Ts=0.2;
+K=200;
+
+u_14=prbs(7,2);
+N=length(u_14);
+
+time_vector=[0:Ts:(N-1)*Ts];
+
+
+tfc = tf([0, 3], [0.5, 0.4, 1]);% transfer fonction continuous
+tfd=c2d(tfc, Ts, 'zoh');
+[true_impulse, impulse_t] = impulse(tfd, time_vector(length(u_14))); %to compare with the values given bu lambda
+
+
+
+
+simin.signals.values = u_14;
+simin.time= time_vector;
+
+simout=sim('compexx',(N-1)*Ts);
+
+output=simout.simout.signals.values;
+
+
+%impulse response of the intercorrelation
+
+[Ruu,~] = intcor(u_14,u_14);
+[Ryu,~] = intcor(output,u_14);
+
+Ruu_k = Ruu(1:K);%reduced
+Ryu_k = Ryu(1:K);
+
+R_toeplitz = toeplitz(Ruu_k, Ruu_k); 
+impulse_intercor=R_toeplitz\Ryu_k';
+
+%impulse response of the xcorrelation
+XRuu=xcorr(u_14,u_14);
+XRuy=xcorr(output,u_14);
+
+XRuu_k = XRuu(N:N+K-1);%reduced
+XRuy_k = XRuy(N:N+K-1);
+
+XR_toeplitz = toeplitz(XRuu_k, XRuu_k); 
+impulse_xcorr=XR_toeplitz\XRuy_k;
+
+
+%plot impulse responses 
+figure(5);
+hold on
+
+plot(time_vector(1:length(impulse_intercor)),impulse_intercor);
+plot(time_vector(1:length(impulse_xcorr)),impulse_xcorr);
+plot(impulse_t, true_impulse*Ts); %true impulse
+legend('impulse_intercor','impulse_xcorr', 'True impulse response');
+xlabel('Time(s)');
+ylabel('Module of the different impulse responses ');
+
+hold off
+
+
+
