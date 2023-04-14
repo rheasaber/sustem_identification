@@ -158,7 +158,6 @@ simin.signals.values = u_14;
 simin.time= time_vector;
 
 simout=sim('compexx',(N-1)*Ts);
-
 output=simout.simout.signals.values;
 
 
@@ -199,3 +198,110 @@ hold off
 
 
 
+%% Exercice 1.5 Frequency domain Identification (periodic signal)
+
+Ts=0.2;
+p=2;
+u_15=prbs(7,p);
+N=length(u_15);
+
+tfc = tf([0, 3], [0.5, 0.4, 1]);% transfer fonction continuous
+tfd=c2d(tfc, Ts, 'zoh');
+[true_impulse, impulse_t] = impulse(tfd, time_vector(length(u_15))); %to compare with the values given bu lambda
+
+
+
+
+simin.signals.values = u_15;
+simin.time= time_vector;
+
+simout=sim('compexx',(N-1)*Ts);
+output=simout.simout.signals.values;
+
+fft_u = 0;
+fft_y = 0;
+
+for i=0:p-1
+    fft_u =fft_u + fft(u_15(1+i*N/p:(i+1)*N/p));
+    fft_y = fft_y + fft(output(1+i*N/p:(i+1)*N/p));
+end
+
+fft_u = fft_u./p;
+fft_y = fft_y./p;
+G=fft_y/fft_u ;
+
+omega = 1/Ts * 2*pi;
+freq_vect = (0:N/p-1) .*omega/(N/p);
+frd_model= frd(G,freq_vect,Ts);
+
+%plot bode diagram of the identified model and compare with the true one
+
+figure(6);
+hold on
+bode(tfd, freq_vect);
+bode(frd_model, freq_vect);
+legend('true model','identified model');
+hold off
+
+
+%% Exercice 1.6 Frequency domain Identification (Random signal)
+
+Ts=0.2;
+N=1000;
+time_vector=[0:Ts:(N-1)*Ts];
+u_16= rand(N, 1);
+m=20;
+
+tfc = tf([0, 3], [0.5, 0.4, 1]);% transfer fonction continuous
+tfd=c2d(tfc, Ts, 'zoh');
+
+simin.signals.values = u_16;
+simin.time= time_vector;
+simout=sim('compexx',(N-1)*Ts);
+output=simout.simout.signals.values;
+
+window=hann(N);
+window_mean = hann(N/m);
+
+R_uu=window.*intcor(u_16,u_16);
+R_yu=window.*intcor(output,u_16);
+
+phi_uu_freq=fft(R_uu);
+phi_yu_freq=fft(R_yu);
+
+G_16 = phi_yu_freq./phi_uu_freq;
+
+phi_uu_freq_avrg=0;
+phi_yu_freq_avrg=0;
+
+for i=0:m-1
+    phi_uu_freq_avrg =phi_uu_freq_avrg + fft(window_mean.*intcor(output(1+i*N/m:(i+1)*N/m), u_16(1+i*N/m:(i+1)*N/m)));
+    phi_yu_freq_avrg=phi_yu_freq_avrg + fft(window_mean.*intcor(output(1+i*N/m:(i+1)*N/m), u_16(1+i*N/m:(i+1)*N/m)));
+end
+
+phi_uu_freq_avrg = phi_uu_freq_avrg./m;
+phi_yu_freq_avrg = phi_yu_freq_avrg./m;
+
+G_16_avrg=phi_yu_freq_avrg/phi_uu_freq_avrg ;
+
+
+%
+omega = 1/Ts * 2*pi;
+freq_vect = (0:N-1) .*omega/(N);
+freq_vect_avrg=(0:(N/m)-1) .*omega/(N/m);
+frd_model= frd(G_16,freq_vect,Ts);
+frd_model_avrg= frd(G_16_avrg,freq_vect_avrg,Ts);
+
+figure(7);
+hold on
+bode(tfd, freq_vect);
+bode(frd_model, freq_vect);
+legend('true model','identified model');
+hold off
+
+figure(8);
+hold on
+bode(tfd, freq_vect);
+bode(frd_model_avrg, freq_vect_avrg);
+legend('true model','identified model');
+hold off
