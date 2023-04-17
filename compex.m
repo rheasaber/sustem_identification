@@ -61,7 +61,7 @@ hold off
 
 
 %% exercice 1.2: Auto Correlation of a PRBS signal
-u_12=prbs(7,5);
+u=prbs(6,4);
 
 [R,h] = intcor(u_12,u_12);
 
