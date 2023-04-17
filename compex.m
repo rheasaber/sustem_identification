@@ -1,5 +1,6 @@
+clc, clear, close all
 
-%% exercice 1.1 
+%% exercice 1.1: Step response
 
 Ts=0.2; %sec
 tfc = tf([0, 3], [0.5, 0.4, 1]);% transfer fonction continuous
@@ -7,12 +8,11 @@ tfd=c2d(tfc, Ts, 'zoh');
 
 %step fcn
 simin.time = (0:Ts:10)';
-%simin.signals.values =[zeros(1/Ts,1); 0.7*ones(fix((10-1)/(Ts+1)),1)];
 simin.signals.values = 0.7*(simin.time >= 1);
 simulation_time=10;
-
 %simulation
 simout=sim('compexx',simulation_time);
+
 
 %plot step response
 opt = stepDataOptions('StepAmplitude',0.7);
@@ -61,9 +61,9 @@ hold off
 
 
 %% exercice 1.2: Auto Correlation of a PRBS signal
-u=prbs(7,5);
+u_12=prbs(7,5);
 
-[R,h] = intcor(u,u);
+[R,h] = intcor(u_12,u_12);
 
 % PLOT 
 figure(3);
@@ -74,37 +74,36 @@ xlabel('h');
 ylabel('R(u,u)')
 hold off
 
-%% exercice 1.3:
+%% exercice 1.3: Impulse response by deconvolution method
 
 Ts= 0.2; %sec
-N=50/Ts;
+N=50/Ts; %simulation time less than 60s
 time_vector=[0:Ts:(N-1)*Ts];
 
 random_signal= rand(N, 1);
+l=length(random_signal);
 
-toeplitz_row = zeros(1,length(random_signal));
+%construct imput matrix
+toeplitz_row = zeros(1,l);
 toeplitz_row(1) = random_signal(1);
-U = toeplitz(random_signal, toeplitz_row);
+u_13 = toeplitz(random_signal, toeplitz_row);
 
 simin.signals.values = random_signal;
 simin.time= time_vector;
 simout=sim('compexx',50);
-
 output=simout.simout.signals.values;
 
 %finite impulse response
 
-
-U_p = U(:,1:200); %k=200
-f_impulse_response = (U_p'*U_p) \ U_p' * output(1:end-1);
+u_13_k = u_13(:,1:200); %k=200
+finite_impulse_response = (u_13_k'*u_13_k) \ u_13_k' * output(1:end-1);
 
 %finite impulse response with bias
+
 tfc = tf([0, 3], [0.5, 0.4, 1]);% transfer fonction continuous
 tfd=c2d(tfc, Ts, 'zoh');
 [true_impulse, impulse_t] = impulse(tfd, time_vector(200)); %to compare with the values given bu lambda
 
-
-%finite impulse response with bias
 
 %eye= eye(200); %matrice identite
 
@@ -113,7 +112,7 @@ lambda=linspace(1,200,400);
 erreur_theta_truei=zeros(length(lambda),1);
 
 for i=1:length(lambda)-1
-    impulse_bias= ((U_p'*U_p)+lambda(i)*eye(200)) \ (U_p' * output(1:end-1));
+    impulse_bias= ((u_13_k'*u_13_k)+lambda(i)*eye(200)) \ (u_13_k' * output(1:end-1));
     erreur_theta_truei(i)=sqrt(sum((impulse_bias-true_impulse*Ts).^2));
 end
 
@@ -122,22 +121,22 @@ end
 
 [~, I] = min(erreur_theta_truei);
 lambda= lambda(I);
-impulse_bias= (U_p'*U_p+lambda*eye(200)) \ (U_p' * output(1:end-1));
+impulse_bias= (u_13_k'*u_13_k+lambda*eye(200)) \ (u_13_k' * output(1:end-1));
 
 
 figure(4)
 hold on
-plot(time_vector(1:length(f_impulse_response)),f_impulse_response);
+plot(time_vector(1:length(finite_impulse_response)),finite_impulse_response);
 plot(time_vector(1:length(impulse_bias)),impulse_bias);
 plot(impulse_t, true_impulse*Ts); %true impulse
 legend('Finite impulse response by deconvolution (K=200)','Finite impulse response by regularization', 'True impulse response');
 xlabel('Time(s)');
 ylabel('Module of the different inpulse responses ');
 hold off
-%
 
 
-%% Exercice 1.4
+
+%% Exercice 1.4: Impulse response by correlation approach
 Ts=0.2;
 K=200;
 
@@ -153,10 +152,8 @@ tfd=c2d(tfc, Ts, 'zoh');
 
 
 
-
 simin.signals.values = u_14;
 simin.time= time_vector;
-
 simout=sim('compexx',(N-1)*Ts);
 output=simout.simout.signals.values;
 
@@ -170,6 +167,7 @@ Ruu_k = Ruu(1:K);%reduced
 Ryu_k = Ryu(1:K);
 
 R_toeplitz = toeplitz(Ruu_k, Ruu_k); 
+
 impulse_intercor=R_toeplitz\Ryu_k';
 
 %impulse response of the xcorrelation
@@ -186,7 +184,6 @@ impulse_xcorr=XR_toeplitz\XRuy_k;
 %plot impulse responses 
 figure(5);
 hold on
-
 plot(time_vector(1:length(impulse_intercor)),impulse_intercor);
 plot(time_vector(1:length(impulse_xcorr)),impulse_xcorr);
 plot(impulse_t, true_impulse*Ts); %true impulse
@@ -214,7 +211,6 @@ tfd=c2d(tfc, Ts, 'zoh');
 
 simin.signals.values = u_15;
 simin.time= time_vector;
-
 simout=sim('compexx',(N-1)*Ts);
 output=simout.simout.signals.values;
 
@@ -230,16 +226,16 @@ fft_u = fft_u./p;
 fft_y = fft_y./p;
 G=fft_y/fft_u ;
 
-omega = 1/Ts * 2*pi;
+omega = 2*pi*1/Ts;
 freq_vect = (0:N/p-1) .*omega/(N/p);
-frd_model= frd(G,freq_vect,Ts);
+frequency_model= frd(G,freq_vect,Ts);
 
 %plot bode diagram of the identified model and compare with the true one
 
 figure(6);
 hold on
 bode(tfd, freq_vect);
-bode(frd_model, freq_vect);
+bode(frequency_model, freq_vect);
 legend('true model','identified model');
 hold off
 
