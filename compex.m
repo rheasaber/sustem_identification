@@ -34,8 +34,7 @@ hold off
 
 %impulse fcn
 simin.time = (0:Ts:10)';
-%simin.signals.values =[zeros(1/Ts,1);0.7*ones(1/Ts,1); zeros(fix((10-2)/(Ts+1)),1)];
-simin.signals.values =0.7*(simin.time == 1)
+simin.signals.values = 0.7* (simin.time == 1.0)
 simulation_time=10;
 
 %simulation
@@ -61,7 +60,7 @@ hold off
 
 
 %% exercice 1.2: Auto Correlation of a PRBS signal
-u=prbs(6,4);
+u_12=prbs(6,4);
 
 [R,h] = intcor(u_12,u_12);
 
@@ -108,7 +107,7 @@ tfd=c2d(tfc, Ts, 'zoh');
 %eye= eye(200); %matrice identite
 
 
-lambda=linspace(1,200,400);
+lambda=linspace(15,25,400);
 erreur_theta_truei=zeros(length(lambda),1);
 
 for i=1:length(lambda)-1
@@ -119,7 +118,10 @@ end
 %doable in exercices because we have the true impulse response but in
 %theory we don't have it so we need to find lambda by trial and error
 
+
+erreur_theta_truei = erreur_theta_truei(1:end-1);
 [~, I] = min(erreur_theta_truei);
+min(erreur_theta_truei)
 lambda= lambda(I);
 impulse_bias= (u_13_k'*u_13_k+lambda*eye(200)) \ (u_13_k' * output(1:end-1));
 
@@ -176,10 +178,16 @@ XRuy=xcorr(output,u_14);
 
 XRuu_k = XRuu(N:N+K-1);%reduced
 XRuy_k = XRuy(N:N+K-1);
+true_impulse_k=true_impulse(N-K:N-1);
 
 XR_toeplitz = toeplitz(XRuu_k, XRuu_k); 
 impulse_xcorr=XR_toeplitz\XRuy_k;
 
+
+erreur_theta_true=sqrt(sum((impulse_intercor-true_impulse_k*Ts).^2));
+erreur_theta_true
+erreur_theta_true2=sqrt(sum((impulse_xcorr-true_impulse_k*Ts).^2));
+erreur_theta_true2
 
 %plot impulse responses 
 figure(5);
