@@ -28,7 +28,7 @@ figure(1)
 hold on
 plot(time_vector,y);
 plot(time_vector,y_predict);
-legend('y measured','y predictes');
+legend('y measured','y predicted');
 xlabel('Time(s)');
 ylabel('Different outputs');
 hold off
@@ -166,16 +166,80 @@ N=length(U);
 Fu = fft(U);
 Fy = fft(Y);
 
+%ARX
 nk=1;
+loss =[];
 lossFcn = zeros(10);
 for i=1:10
-    model = arx(data, i);  % Identify ARX model of specific order
-    loss = [loss model.EstimationInfo.LossFcn];  
+    model_arx = arx(data_objct_mean, [i i 1]);  % Identify ARX model of specific order
+    loss = [loss model_arx.EstimationInfo.LossFcn];  
 end
+%order seems to be 2
 
-
-%Plot
+%Plot loss function ARX
+figure(5)
 close all
 plot(loss)
 xlabel('Order Number')
 ylabel('Loss Value')
+
+%ARMAX
+min =3;
+max=8;
+for i=min:max
+    model_armax= armax(data_objct_mean,[i i i 1]);
+    subplot(max-min+1,1,i-min+1)
+    h = iopzplot(model_armax);
+    showConfidence(h,2);
+end
+
+%estimation of time delay
+delta= 4;%=order
+model_armax= armax(data_objct_mean,[delta delta delta 1]);
+errorbar(model_armax.b,model_armax.db)
+xlabel('Coefficient of B')
+ylabel('Magnitude')
+
+%1<= nb<=delta-nk+1   thus nb<= delta=4 but how much?
+
+
+%Compute the loss function for variable nb
+min = 1;
+max = 7;
+lossb = [];
+for i=min:max
+    model = arx(data_objct_mean,[4 i 1]);
+    lossb = [lossb model.EstimationInfo.LossFcn];  
+end
+
+%Compute the loss function for variable na
+min = 1;
+max = 7;
+lossa = [];
+for i=min:max
+    model = arx(data_objct_mean,[i 4 1]);
+    lossa = [lossa model.EstimationInfo.LossFcn];  
+end
+close all
+
+figure(11)
+plot(lossb)
+xlabel('Order Number for n_{b}')
+ylabel('Loss Value')
+
+%Looking at the plots it seems that nb is around 3 
+close all
+figure(12)
+plot(lossa)
+xlabel('Order Number for n_{a}')
+ylabel('Loss Value')
+
+
+%Looking at the plots it seems that na is around 2
+
+NA = 1:1:10;
+NB = 1:1:10;
+NK = 1:5;
+NN = struc(NA,NB,NK);
+V = arxstruc(data_objct_mean,data_objct_mean,NN);
+selstruc(V)
