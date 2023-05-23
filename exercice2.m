@@ -107,6 +107,7 @@ Q=Y*U_p;
 % compute the singular values using svd
 SV=svd(Q);
 %number of states
+figure(3)
 plot(SV, 'o')
 
 n=2; % according to the graphe try to see with 2,3 or 4
@@ -162,9 +163,21 @@ data_objct_mean=iddata(y_o,u_o,Ts);
 Y = data_objct_mean.y;
 U = data_objct_mean.u;
 N=length(U);
+p=8;
 
+%bode diagram
 Fu = fft(U);
 Fy = fft(Y);
+g = Fy(1:p:end)./Fu(1:p:end);
+n=N/p;
+omega=2*pi/Ts;
+freq_vect = 0 : omega*(1/n) : (N-1)*omega*(1/n);
+frequency_model= frd(g(1:(n-1)/2),freq_vect(1:(n-1)/2),Ts);
+
+figure(5);
+hold on
+bode(frequency_model, freq_vect);
+hold off
 
 %ARX
 nk=1;
@@ -174,37 +187,43 @@ for i=1:10
     model_arx = arx(data_objct_mean, [i i 1]);  % Identify ARX model of specific order
     loss = [loss model_arx.EstimationInfo.LossFcn];  
 end
-%order seems to be 2
+                                                  %order seems to be 2
 
 %Plot loss function ARX
-figure(5)
-close all
+figure(6)
+
 plot(loss)
 xlabel('Order Number')
 ylabel('Loss Value')
 
-%ARMAX
-min =3;
-max=8;
+% ARMAX
+min =1;
+max=6;
 for i=min:max
+    %figure()
     model_armax= armax(data_objct_mean,[i i i 1]);
-    subplot(max-min+1,1,i-min+1)
-    h = iopzplot(model_armax);
-    showConfidence(h,2);
-end
+   
+    %h = iopzplot(model_armax);
 
-%estimation of time delay
+    showConfidence(h,2);
+
+end % delta = 4 seems to be the max value for wich there is no pole /zero cancellation for fixedpoles and zeros and (thus delta_0=4=order)
+
+% estimation of time delay
 delta= 4;%=order
 model_armax= armax(data_objct_mean,[delta delta delta 1]);
+figure();
 errorbar(model_armax.b,model_armax.db)
 xlabel('Coefficient of B')
 ylabel('Magnitude')
 
-%1<= nb<=delta-nk+1   thus nb<= delta=4 but how much?
+%nk=1 because bo=0
+%1<= nb<=delta-nk+1   thus nb<= delta=4 but how much?-->loss fcn
+%na=n=4
+%nb=m-d+1  =m
 
-
-%Compute the loss function for variable nb
-min = 1;
+%Compute the loss function for variable nb --> seems to be equal to 3
+min = 4;
 max = 7;
 lossb = [];
 for i=min:max
@@ -212,34 +231,62 @@ for i=min:max
     lossb = [lossb model.EstimationInfo.LossFcn];  
 end
 
-%Compute the loss function for variable na
-min = 1;
-max = 7;
-lossa = [];
-for i=min:max
-    model = arx(data_objct_mean,[i 4 1]);
-    lossa = [lossa model.EstimationInfo.LossFcn];  
-end
-close all
-
 figure(11)
+hold on
 plot(lossb)
 xlabel('Order Number for n_{b}')
 ylabel('Loss Value')
+hold off
 
-%Looking at the plots it seems that nb is around 3 
-close all
-figure(12)
-plot(lossa)
-xlabel('Order Number for n_{a}')
-ylabel('Loss Value')
+%
 
-
-%Looking at the plots it seems that na is around 2
-
-NA = 1:1:10;
-NB = 1:1:10;
-NK = 1:5;
-NN = struc(NA,NB,NK);
-V = arxstruc(data_objct_mean,data_objct_mean,NN);
+na = 1:1:10;
+nb = 1:1:10;
+nk = 1:5;
+nn = struc(na,nb,nn);
+V = arxstruc(data_objct_mean,data_objct_mean,nn)
 selstruc(V)
+
+%% 2.2.2 Parametric identification
+
+load("ASSdata.mat");
+Ts=0.01;
+data = iddata(y,u,Ts);
+data = detrend(data);
+
+N = length(u);
+data_id = data(1:N/2);
+data_val = data(N/2+1:end);
+
+na=4;
+nc=na;
+nd=na;
+nf=na;
+nx=na;
+nb=3;
+nk=1;
+
+model_arx = arx(data_id, [na, nb, nk]);
+model_iv4 = iv4(data_id, [na, nb, nk]);
+model_armax = armax(data_id, [na, nb, nc, nk]);
+model_oe = oe(data_id, [nb, nf, nk]);
+model_bj = bj(data_id, [nb, nc, nd, nf, nk]);
+model_n4sid = n4sid(data_id, nx);
+
+%time domain
+figure
+compare(data_val, model_arx, model_armax, model_oe, model_bj, model_iv4, model_n4sid);
+
+%frequency domain
+U = fft(u);
+Y = fft(y);
+p=8;
+n=N/p; %=125
+
+g = Y(1:p:end)./U(1:p:end);
+omega=2*pi/Ts;
+freq_vect = 0 : omega*(1/n) : (N-1)*omega*(1/n);
+G= frd(g(1:(n-1)/2),freq_vect(1:(n-1)/2),Ts);
+
+figure
+compare(G, model_arx, model_armax, model_oe, model_bj, model_iv4, model_n4sid);
