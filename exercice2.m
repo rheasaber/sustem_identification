@@ -176,7 +176,7 @@ frequency_model= frd(g(1:(n-1)/2),freq_vect(1:(n-1)/2),Ts);
 
 figure(5);
 hold on
-bode(frequency_model, freq_vect);
+%bode(frequency_model, freq_vect);
 hold off
 
 %ARX
@@ -192,18 +192,18 @@ end
 %Plot loss function ARX
 figure(6)
 
-plot(loss)
+%plot(loss)
 xlabel('Order Number')
 ylabel('Loss Value')
 
 % ARMAX
 min =1;
-max=6;
+max=10;
 for i=min:max
-    %figure()
+    figure()
     model_armax= armax(data_objct_mean,[i i i 1]);
    
-    %h = iopzplot(model_armax);
+    h = iopzplot(model_armax);
 
     showConfidence(h,2);
 
@@ -223,8 +223,8 @@ ylabel('Magnitude')
 %nb=m-d+1  =m
 
 %Compute the loss function for variable nb --> seems to be equal to 3
-min = 4;
-max = 7;
+min = 1;
+max = 4;
 lossb = [];
 for i=min:max
     model = arx(data_objct_mean,[4 i 1]);
@@ -254,6 +254,7 @@ Ts=0.01;
 data = iddata(y,u,Ts);
 data = detrend(data);
 
+%here we split data in two
 N = length(u);
 data_id = data(1:N/2);
 data_val = data(N/2+1:end);
