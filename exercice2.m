@@ -69,6 +69,9 @@ xlabel('Time(s)');
 ylabel('Different outputs');
 hold off
 
+error2 = sum((yp - y_predict).^2);
+error2
+
 %ym
 time=0:Ts:Ts*(N-1);
 Bo=Theta(3:end);
@@ -86,7 +89,9 @@ xlabel('Time(s)');
 ylabel('Different outputs');
 hold off
 
-error == sum((yp - ym).^2);
+ym = ym(3:end);
+error = sum((yp - ym).^2);
+error
 
 %% 2.1.3 state- space model identification
 
@@ -140,15 +145,21 @@ SS = ss(A,B,C,0,Ts);
 sys = tf(SS);
 y_predict=lsim(sys,u,time);
 
+
 %plot y and y_predict
 figure(4)
 hold on
 plot(time,y);
-plot(time,ym);
-legend('y ','ym');
+plot(time,y_predict);
+legend('y ','y_{predict}');
 xlabel('Time(s)');
 ylabel('Different outputs');
 hold off
+
+
+
+error = sum((y_predict - y).^2);
+error
 
 
 
